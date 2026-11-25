@@ -35,7 +35,7 @@ Gerekenler: Node.js 18+, Python 3.10+, FFmpeg ve Google Chrome/Chromium.
 
 ```bash
 cd engine
-npm install
+npm ci
 pip install -r ../requirements.txt
 ```
 
@@ -46,14 +46,17 @@ Chrome yolu otomatik bulunamazsa `CHROME_PATH` ortam değişkenini ayarlayın.
 ```bash
 cd engine
 node render.mjs hayber-sancagi --stills=2,10,20,30,40,50 --scale=0.5
+node render.mjs hayber-sancagi --scale=0.5
 node render.mjs hayber-sancagi
 ```
 
-Hikâye dosyaları `stories/<hikâye-adı>/` altında tutulur. Her hikâyede `story.js`, `voice/words.json` ve isteğe bağlı ses dosyaları bulunur. Kendi seslendirmenizi eklemek için `voice/voice.wav` ve kelime zamanlarını üretin:
+Hikâye dosyaları `stories/<hikâye-adı>/` altında tutulur. Her hikâyede `story.js`, `voice/words.json` ve isteğe bağlı ses dosyaları bulunur. Seslendirme eklemek için `stories/<hikâye-adı>/voice/voice.wav` dosyasını yerleştirin. Render motoru önce `audio/mix.wav`, yoksa `voice/voice.wav` dosyasını otomatik olarak videoya ekler. Kelime zamanlarını üretmek için:
 
 ```bash
 python ../tools/kelime_saat.py ../stories/<hikâye-adı>/voice/voice.wav ../stories/<hikâye-adı>/voice/script.txt ../stories/<hikâye-adı>/voice/words.json
 ```
+
+Render çıktıları `stories/<hikâye-adı>/out/` klasörüne yazılır. `--stills` seçeneği sahne kontrol görselleri üretir; `--scale=0.5` taslak render içindir. FFmpeg hata kodu sıfır değilse işlem başarısız sayılır.
 
 ## Yeni hikâye üretim akışı
 
