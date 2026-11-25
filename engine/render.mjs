@@ -10,7 +10,8 @@ import { findChrome } from './chrome.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const args = Object.fromEntries(process.argv.slice(3).map(a => a.replace(/^--/, '').split(/=(.*)/s)).map(([k, v]) => [k, v ?? '1']));
-const story = process.argv[2] || 'is-odasi';
+const story = process.argv[2] || 'hayber-sancagi';
+if (!/^[a-z0-9][a-z0-9-]*$/i.test(story)) throw new Error('Geçersiz hikâye adı: ' + story);
 const SD = path.join(here, '..', 'stories', story), OUT = path.join(SD, 'out'); fs.mkdirSync(OUT, { recursive: true });
 const scale = +(args.scale || 1);
 const CHROME = findChrome();
@@ -49,10 +50,15 @@ if (args.stills) {
   console.log('sheet', sheet);
 } else {
   const FPS = meta.FPS, from = +(args.from || 0), to = +(args.to || meta.DUR), N = Math.round((to - from) * FPS);
+  if (!Number.isFinite(from) || !Number.isFinite(to) || from < 0 || to <= from || to > meta.DUR) {
+    throw new Error(`Geçersiz zaman aralığı: from=${from}, to=${to}, süre=${meta.DUR}`);
+  }
+  if (!Number.isFinite(scale) || scale <= 0 || scale > 1) throw new Error('--scale 0 ile 1 arasında olmalıdır.');
   const name = args.name || meta.NAME + (scale !== 1 ? `_x${scale}` : '');
   const silent = path.join(OUT, name + '_video.mp4');
   const ff = spawn('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', String(FPS), '-c:v', 'png', '-i', '-',
     '-c:v', 'libx264', '-preset', 'slow', '-crf', String(args.crf || 16), '-pix_fmt', 'yuv420p', '-movflags', '+faststart', silent], { stdio: ['pipe', 'inherit', 'inherit'] });
+  ff.on('error', e => console.error('FFmpeg başlatılamadı:', e.message));
   const t1 = Date.now();
   for (let i = 0; i < N; i++) {
     const buf = await grab(from + i / FPS);
