@@ -10,7 +10,8 @@ import { findChrome } from './chrome.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const args = Object.fromEntries(process.argv.slice(3).map(a => a.replace(/^--/, '').split(/=(.*)/s)).map(([k, v]) => [k, v ?? '1']));
-const story = process.argv[2] || 'is-odasi';
+const story = process.argv[2] || 'hayber-sancagi';
+if (!/^[a-z0-9][a-z0-9-]*$/i.test(story)) throw new Error('Geçersiz hikâye adı: ' + story);
 const SD = path.join(here, '..', 'stories', story), OUT = path.join(SD, 'out'); fs.mkdirSync(OUT, { recursive: true });
 const scale = +(args.scale || 1);
 const CHROME = findChrome();
@@ -49,24 +50,40 @@ if (args.stills) {
   console.log('sheet', sheet);
 } else {
   const FPS = meta.FPS, from = +(args.from || 0), to = +(args.to || meta.DUR), N = Math.round((to - from) * FPS);
+  if (!Number.isFinite(from) || !Number.isFinite(to) || from < 0 || to <= from || to > meta.DUR) {
+    throw new Error(`Geçersiz zaman aralığı: from=${from}, to=${to}, süre=${meta.DUR}`);
+  }
+  if (!Number.isFinite(scale) || scale <= 0 || scale > 1) throw new Error('--scale 0 ile 1 arasında olmalıdır.');
   const name = args.name || meta.NAME + (scale !== 1 ? `_x${scale}` : '');
   const silent = path.join(OUT, name + '_video.mp4');
   const ff = spawn('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', String(FPS), '-c:v', 'png', '-i', '-',
     '-c:v', 'libx264', '-preset', 'slow', '-crf', String(args.crf || 16), '-pix_fmt', 'yuv420p', '-movflags', '+faststart', silent], { stdio: ['pipe', 'inherit', 'inherit'] });
+  ff.on('error', e => console.error('FFmpeg başlatılamadı:', e.message));
   const t1 = Date.now();
   for (let i = 0; i < N; i++) {
     const buf = await grab(from + i / FPS);
     if (!ff.stdin.write(buf)) await new Promise(r => ff.stdin.once('drain', r));
     if (i % 30 === 0) process.stdout.write(`frame ${i}/${N}  ${((Date.now() - t1) / 1000).toFixed(0)} s\r`);
   }
-  ff.stdin.end(); await new Promise(r => ff.on('close', r));
+  ff.stdin.end();
+  const exitCode = await new Promise((resolve, reject) => {
+    ff.once('error', reject);
+    ff.once('close', code => resolve(code));
+  });
+  if (exitCode !== 0) throw new Error(`FFmpeg video kodlaması başarısız (çıkış kodu: ${exitCode}).`);
   console.log(`\n${N} frames in ${((Date.now() - t1) / 1000).toFixed(1)} s`);
   const mix = path.join(SD, 'audio', 'mix.wav');
+  const voice = path.join(SD, 'voice', 'voice.wav');
+  const audio = fs.existsSync(mix) ? mix : fs.existsSync(voice) ? voice : null;
   const final = path.join(OUT, name + '.mp4');
-  if (fs.existsSync(mix)) {
-    execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', silent, '-ss', String(from), '-t', String(to - from), '-i', mix, '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '256k', '-shortest', final]);
+  if (audio) {
+    execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', silent, '-ss', String(from), '-t', String(to - from), '-i', audio,
+      '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-shortest', final]);
     fs.unlinkSync(silent);
-  } else fs.renameSync(silent, final);
+  } else {
+    fs.renameSync(silent, final);
+    console.warn('Ses dosyası bulunamadı. Sessiz video üretildi; ses için stories/' + story + '/voice/voice.wav veya audio/mix.wav ekleyin.');
+  }
   console.log('->', final);
 }
 await browser.close(); server.close();

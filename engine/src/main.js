@@ -5,7 +5,7 @@ import { Post } from './post.js';
 import { groupWords, drawCaption } from './captions.js';
 
 const q = new URLSearchParams(location.search);
-const STORY = q.get('story') || 'is-odasi';
+const STORY = q.get('story') || 'hayber-sancagi';
 const SCALE = parseFloat(q.get('scale') || '1');
 const W = Math.round(1080 * SCALE), H = Math.round(1920 * SCALE);
 

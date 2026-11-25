@@ -2,7 +2,7 @@ node_modules/
 stories/*/out/
 stories/*/audio/*.wav
 stories/*/voice/*.wav
-!stories/is-odasi/voice/voice.wav
+!stories/*/voice/voice.wav
 ref/
 *.mp4
 !ornek/is-odasi.mp4

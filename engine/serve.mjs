@@ -5,8 +5,14 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/ja
 export function startServer(port = 0) {
   return new Promise(res => {
     const server = http.createServer((req, rsp) => {
-      const p = path.join(ROOT, decodeURIComponent(new URL(req.url, 'http://x').pathname));
-      if (!p.startsWith(ROOT) || !fs.existsSync(p) || fs.statSync(p).isDirectory()) { rsp.writeHead(404); rsp.end(); return; }
+      let pathname;
+      try { pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname); }
+      catch { rsp.writeHead(400); rsp.end('Bad request'); return; }
+      const p = path.resolve(ROOT, '.' + pathname);
+      const relative = path.relative(ROOT, p);
+      if (relative.startsWith('..') || path.isAbsolute(relative) || !fs.existsSync(p) || fs.statSync(p).isDirectory()) {
+        rsp.writeHead(404); rsp.end(); return;
+      }
       rsp.writeHead(200, { 'Content-Type': TYPES[path.extname(p)] || 'application/octet-stream', 'Cache-Control': 'no-store' });
       fs.createReadStream(p).pipe(rsp);
     });
