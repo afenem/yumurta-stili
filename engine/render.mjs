@@ -65,14 +65,25 @@ if (args.stills) {
     if (!ff.stdin.write(buf)) await new Promise(r => ff.stdin.once('drain', r));
     if (i % 30 === 0) process.stdout.write(`frame ${i}/${N}  ${((Date.now() - t1) / 1000).toFixed(0)} s\r`);
   }
-  ff.stdin.end(); await new Promise(r => ff.on('close', r));
+  ff.stdin.end();
+  const exitCode = await new Promise((resolve, reject) => {
+    ff.once('error', reject);
+    ff.once('close', code => resolve(code));
+  });
+  if (exitCode !== 0) throw new Error(`FFmpeg video kodlaması başarısız (çıkış kodu: ${exitCode}).`);
   console.log(`\n${N} frames in ${((Date.now() - t1) / 1000).toFixed(1)} s`);
   const mix = path.join(SD, 'audio', 'mix.wav');
+  const voice = path.join(SD, 'voice', 'voice.wav');
+  const audio = fs.existsSync(mix) ? mix : fs.existsSync(voice) ? voice : null;
   const final = path.join(OUT, name + '.mp4');
-  if (fs.existsSync(mix)) {
-    execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', silent, '-ss', String(from), '-t', String(to - from), '-i', mix, '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '256k', '-shortest', final]);
+  if (audio) {
+    execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', silent, '-ss', String(from), '-t', String(to - from), '-i', audio,
+      '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-shortest', final]);
     fs.unlinkSync(silent);
-  } else fs.renameSync(silent, final);
+  } else {
+    fs.renameSync(silent, final);
+    console.warn('Ses dosyası bulunamadı. Sessiz video üretildi; ses için stories/' + story + '/voice/voice.wav veya audio/mix.wav ekleyin.');
+  }
   console.log('->', final);
 }
 await browser.close(); server.close();
