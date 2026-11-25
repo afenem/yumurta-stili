@@ -31,10 +31,16 @@ export async function setup(ctx) {
     createFacelessCharacter(scene, { robe: '#45566a', turban: '#e1d7c3', position: [3.1, 0, 5.5], facing: Math.PI, scale: 1.02 }),
   ];
   const banner = createBanner(scene, { position: [0.9, 3.25, 1.7], color: '#244c3b', width: 1.8, height: 1.35 });
+  // Seeded particle layout: the same story always starts with the same composition.
   const dust = [];
+  let seed = 24681357;
+  const random = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
   for (let i = 0; i < 80; i++) {
-    const m = new THREE.Mesh(new THREE.SphereGeometry(.025 + Math.random() * .035, 5, 5), new THREE.MeshBasicMaterial({ color: '#f4d7a1', transparent: true, opacity: .24 }));
-    m.position.set((Math.random() - .5) * 24, .15 + Math.random() * 3.5, -10 + Math.random() * 24); scene.add(m); dust.push(m);
+    const x = (random() - .5) * 24, y = .15 + random() * 3.5, z = -10 + random() * 24;
+    const m = new THREE.Mesh(new THREE.SphereGeometry(.025 + random() * .035, 5, 5), new THREE.MeshBasicMaterial({ color: '#f4d7a1', transparent: true, opacity: .24 }));
+    m.position.set(x, y, z);
+    scene.add(m);
+    dust.push({ mesh: m, x, y, phase: random() * Math.PI * 2 });
   }
   const cam = new CamPath([
     { t: 0, pos: [0, 5.5, 18], look: [0, 3.2, -9], fov: 48 },
@@ -55,7 +61,11 @@ export function frame(t, ctx) {
   banner.children[1].rotation.y = -.08 + Math.sin(t * 1.1) * .045;
   ali.position.x = Math.sin(t * .22) * .06;
   companions.forEach((c, i) => { c.rotation.y = Math.PI + Math.sin(t * .35 + i) * .025; });
-  dust.forEach((p, i) => { p.position.x += Math.sin(t * .5 + i) * .0008; p.position.y += Math.cos(t * .7 + i) * .0005; });
+  // Pure time-based motion: rendering frame 20 before frame 10 must not alter either result.
+  dust.forEach(({ mesh, x, y, phase }) => {
+    mesh.position.x = x + Math.sin(t * .5 + phase) * .12;
+    mesh.position.y = y + Math.cos(t * .7 + phase) * .08;
+  });
   let focus = 10, coc = .7, bloom = .62, tint = [1.0, .91, .78];
   if (t < 8) { focus = 18; coc = .25; }
   else if (t < 18) { focus = 12; coc = .5; }
