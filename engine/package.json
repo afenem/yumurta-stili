@@ -1,9 +1,9 @@
 {
-  "name": "yumurta-stili-engine",
-  "version": "0.1.0",
+  "name": "siyer-sahne-engine",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "2D egg-head characters in a 3D world: three.js + Canvas 2D, frame-exact capture with puppeteer, no Remotion.",
+  "description": "Cinematic stylized 3D engine for respectful Islamic history Shorts.",
   "license": "MIT",
   "dependencies": {
     "puppeteer-core": "^23.11.1",
